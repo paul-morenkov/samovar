@@ -1,26 +1,29 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::BufRead};
 
-pub(crate) mod parser;
+use crate::header::parser::ParseError;
+
+pub mod parser;
+pub mod reader;
 
 #[derive(Debug, Default)]
-pub(crate) struct Header<'so> {
-    meta: Option<HeaderMeta<'so>>,
-    reference_seqs: HashMap<&'so str, ReferenceSeq<'so>>,
-    read_groups: HashMap<&'so str, ReadGroup<'so>>,
-    programs: HashMap<ProgramID<'so>, Program<'so>>,
-    comments: Vec<&'so str>,
+pub(crate) struct Header {
+    meta: Option<HeaderMeta>,
+    reference_seqs: HashMap<String, ReferenceSeq>,
+    read_groups: HashMap<String, ReadGroup>,
+    programs: HashMap<ProgramID, Program>,
+    comments: Vec<String>,
 }
 
-impl<'so> TryFrom<&'so str> for Header<'so> {
+impl TryFrom<String> for Header {
     type Error = parser::ParseError;
 
-    fn try_from(value: &'so str) -> Result<Self, Self::Error> {
-        parser::parse(value)
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        parser::parse(&value)
     }
 }
 
 #[derive(Debug, Default)]
-struct HeaderMeta<'so> {
+struct HeaderMeta {
     // VN
     format_version: Version,
     // SO
@@ -28,7 +31,7 @@ struct HeaderMeta<'so> {
     // GO
     alignment_grouping: Option<AlignmentGrouping>,
     // SS
-    alignment_sub_sorting: Option<&'so str>,
+    alignment_sub_sorting: Option<String>,
 }
 #[derive(Debug, Default)]
 struct Version {
@@ -54,27 +57,27 @@ enum AlignmentGrouping {
 }
 
 #[derive(Debug, Default)]
-struct ReferenceSeq<'so> {
+struct ReferenceSeq {
     // SN
-    name: &'so str,
+    name: String,
     // LN
     length: u64,
     // AH
-    alternate_locus: Option<&'so str>,
+    alternate_locus: Option<String>,
     // AN
-    alternate_names: Option<Vec<&'so str>>,
+    alternate_names: Option<Vec<String>>,
     // AS
-    assembly_id: Option<&'so str>,
+    assembly_id: Option<String>,
     // DS
-    description: Option<&'so str>,
+    description: Option<String>,
     // M5
-    checksum: Option<&'so str>,
+    checksum: Option<String>,
     // SP
-    species: Option<&'so str>,
+    species: Option<String>,
     // TP
     topology: Option<Topology>,
     // UR
-    uri: Option<&'so str>,
+    uri: Option<String>,
 }
 
 #[derive(Debug)]
@@ -84,35 +87,35 @@ enum Topology {
 }
 
 #[derive(Debug, Default)]
-struct ReadGroup<'so> {
+struct ReadGroup {
     // ID
-    id: &'so str,
+    id: String,
     // BC
-    barcode: Option<&'so str>,
+    barcode: Option<String>,
     // CN
-    center: Option<&'so str>,
+    center: Option<String>,
     // DS
-    description: Option<&'so str>,
+    description: Option<String>,
     // DT
-    date: Option<&'so str>,
+    date: Option<String>,
     // FO
-    flow_order: Option<&'so str>,
+    flow_order: Option<String>,
     // KS
-    key_sequence: Option<&'so str>,
+    key_sequence: Option<String>,
     // LB
-    library: Option<&'so str>,
+    library: Option<String>,
     // PG
-    programs: Option<&'so str>,
+    programs: Option<String>,
     // PI
     insert_size: Option<u32>,
     // PL
     platform: Option<Platform>,
     // PM
-    platform_model: Option<&'so str>,
+    platform_model: Option<String>,
     // PU
-    platform_unit: Option<&'so str>,
+    platform_unit: Option<String>,
     // SM
-    sample: Option<&'so str>,
+    sample: Option<String>,
 }
 
 #[derive(Debug)]
@@ -132,20 +135,26 @@ enum Platform {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, PartialOrd, Eq, Hash)]
-struct ProgramID<'so>(&'so str);
+struct ProgramID(String);
 
 #[derive(Debug, Default)]
-struct Program<'so> {
+struct Program {
     // ID
-    id: ProgramID<'so>,
+    id: ProgramID,
     // PN
-    name: Option<&'so str>,
+    name: Option<String>,
     // CL
-    command_line: Option<&'so str>,
+    command_line: Option<String>,
     // PP
-    previous: Option<ProgramID<'so>>,
+    previous: Option<ProgramID>,
     // DS
-    description: Option<&'so str>,
+    description: Option<String>,
     // VN
-    version: Option<&'so str>,
+    version: Option<String>,
+}
+
+pub fn read_header(reader: &mut impl BufRead) -> Result<Header, ParseError> {
+    let mut buf = String::new();
+    while let Ok(line) = reader.read_line(&mut buf) {}
+    todo!()
 }

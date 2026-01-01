@@ -5,7 +5,7 @@ use crate::header::{
     },
 };
 
-pub(super) fn parse_program<'so>(s: &mut &'so [u8]) -> Result<Program<'so>, ParseError> {
+pub(super) fn parse_program(s: &mut &[u8]) -> Result<Program, ParseError> {
     let mut id = None;
     let mut name = None;
     let mut command_line = None;
@@ -19,12 +19,12 @@ pub(super) fn parse_program<'so>(s: &mut &'so [u8]) -> Result<Program<'so>, Pars
         eat_kv_separator(s)?;
         // TODO: fill in meta fields
         match tag {
-            b"ID" => try_insert_once(&mut id, parse_str(s).map(ProgramID)?)?,
-            b"PN" => try_insert_once(&mut name, parse_str(s)?)?,
-            b"CL" => try_insert_once(&mut command_line, parse_str(s)?)?,
-            b"PP" => try_insert_once(&mut previous, parse_str(s).map(ProgramID)?)?,
-            b"DS" => try_insert_once(&mut description, parse_str(s)?)?,
-            b"VN" => try_insert_once(&mut version, parse_str(s)?)?,
+            b"ID" => try_insert_once(&mut id, parse_str(s).map(|s| ProgramID(s.into()))?)?,
+            b"PN" => try_insert_once(&mut name, parse_str(s)?.into())?,
+            b"CL" => try_insert_once(&mut command_line, parse_str(s)?.into())?,
+            b"PP" => try_insert_once(&mut previous, parse_str(s).map(|s| ProgramID(s.into()))?)?,
+            b"DS" => try_insert_once(&mut description, parse_str(s)?.into())?,
+            b"VN" => try_insert_once(&mut version, parse_str(s)?.into())?,
             _ => return Err(ParseError::UnknownTag),
         };
     }

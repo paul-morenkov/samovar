@@ -11,7 +11,7 @@ use regex::bytes::Regex;
 
 static RE_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([0-9]+).([0-9]+)").unwrap());
 
-pub(crate) fn parse_meta<'so>(s: &mut &'so [u8]) -> Result<HeaderMeta<'so>, ParseError> {
+pub(crate) fn parse_meta(s: &mut &[u8]) -> Result<HeaderMeta, ParseError> {
     let mut version = None;
     let mut sort_order = None;
     let mut grouping = None;
@@ -72,7 +72,7 @@ fn parse_grouping(s: &mut &[u8]) -> Result<AlignmentGrouping, ParseError> {
         _ => Err(ParseError::UnknownValue),
     }
 }
-fn parse_sub_sorting<'so>(s: &mut &'so [u8]) -> Result<&'so str, ParseError> {
+fn parse_sub_sorting(s: &mut &[u8]) -> Result<String, ParseError> {
     // TODO: figure out how UTF8 handling should happen
-    parse_value(s).map(|b| str::from_utf8(b).map_err(|_| ParseError::InvalidUTF8))?
+    parse_value(s).map(|b| String::from_utf8(b.to_owned()).map_err(|_| ParseError::InvalidUTF8))?
 }

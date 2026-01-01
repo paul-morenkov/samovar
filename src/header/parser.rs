@@ -4,28 +4,28 @@ mod read_group;
 mod ref_seq;
 
 use crate::header::{Header, HeaderMeta, Program, ReadGroup, ReferenceSeq};
-use logos::Logos;
+// use logos::Logos;
 use std::{collections::HashMap, str::FromStr};
 
-#[derive(Logos, Debug)]
-#[logos(skip r"\n+")]
-pub(crate) enum HeaderToken<'so> {
-    #[token("@", priority = 10)]
-    At,
-    #[regex(r"HD|SQ|RG|PG", |lex| RecordCode::from_str(lex.slice()), priority = 10)]
-    RecordCode(RecordCode),
-    #[token(":", priority = 10)]
-    Colon,
-    #[token(r"\t")]
-    Tab,
-    #[regex(r"[A-Za-z][A-Za-z0-9]:[^\t\n]+", |lex| lex.slice().split_once(':').unwrap())]
-    Field((&'so str /* key */, &'so str /* value */)),
-    #[regex(r"CO\t.*", |lex| lex.slice().split_at(3).1, allow_greedy = true)]
-    Comment(&'so str),
-    #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice())]
-    Version(&'so str),
-}
-
+// #[derive(Logos, Debug)]
+// #[logos(skip r"\n+")]
+// pub(crate) enum HeaderToken {
+//     #[token("@", priority = 10)]
+//     At,
+//     #[regex(r"HD|SQ|RG|PG", |lex| RecordCode::from_str(lex.slice()), priority = 10)]
+//     RecordCode(RecordCode),
+//     #[token(":", priority = 10)]
+//     Colon,
+//     #[token(r"\t")]
+//     Tab,
+//     #[regex(r"[A-Za-z][A-Za-z0-9]:[^\t\n]+", |lex| lex.slice().split_once(':').unwrap())]
+//     Field((String /* key */, String /* value */)),
+//     #[regex(r"CO\t.*", |lex| lex.slice().split_at(3).1, allow_greedy = true)]
+//     Comment(String),
+//     #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice())]
+//     Version(String),
+// }
+//
 #[derive(Debug)]
 enum RecordCode {
     // HD
@@ -69,14 +69,16 @@ pub enum ParseError {
     DuplicateKey,
     MissingRadGroupId,
     MissingProgramId,
+    IOError,
 }
 
-enum HeaderRow<'so> {
-    Meta(HeaderMeta<'so>),
-    RefSeq(ReferenceSeq<'so>),
-    ReadGroup(ReadGroup<'so>),
-    Program(Program<'so>),
-    Comment(&'so str),
+#[derive(Debug)]
+pub(crate) enum HeaderRow {
+    Meta(HeaderMeta),
+    RefSeq(ReferenceSeq),
+    ReadGroup(ReadGroup),
+    Program(Program),
+    Comment(String),
 }
 
 enum HeaderRowKind {
@@ -92,7 +94,7 @@ enum HeaderRowKind {
     Comment,
 }
 
-pub(crate) fn parse<'so>(s: &'so str) -> Result<Header<'so>, ParseError> {
+pub(crate) fn parse(s: &str) -> Result<Header, ParseError> {
     let mut meta = None;
     let mut reference_seqs = HashMap::new();
     let mut read_groups = HashMap::new();
@@ -104,12 +106,18 @@ pub(crate) fn parse<'so>(s: &'so str) -> Result<Header<'so>, ParseError> {
         match header_row {
             HeaderRow::Meta(m) => try_insert_once(&mut meta, m)?,
             HeaderRow::RefSeq(ref_seq) => {
-                if reference_seqs.insert(ref_seq.name, ref_seq).is_some() {
+                if reference_seqs
+                    .insert(ref_seq.name.clone(), ref_seq)
+                    .is_some()
+                {
                     return Err(ParseError::DuplicateKey);
                 }
             }
             HeaderRow::ReadGroup(read_group) => {
-                if read_groups.insert(read_group.id, read_group).is_some() {
+                if read_groups
+                    .insert(read_group.id.clone(), read_group)
+                    .is_some()
+                {
                     return Err(ParseError::DuplicateKey);
                 }
             }
@@ -130,7 +138,7 @@ pub(crate) fn parse<'so>(s: &'so str) -> Result<Header<'so>, ParseError> {
     })
 }
 
-fn parse_header_row(mut s: &[u8]) -> Result<HeaderRow<'_>, ParseError> {
+pub(crate) fn parse_header_row(mut s: &[u8]) -> Result<HeaderRow, ParseError> {
     eat_prefix(&mut s)?;
     let row_kind = parse_header_row_kind(&mut s)?;
     parse_header_row_value(row_kind, &mut s)
@@ -154,10 +162,7 @@ fn parse_header_row_kind(s: &mut &[u8]) -> Result<HeaderRowKind, ParseError> {
     }
 }
 
-fn parse_header_row_value<'so>(
-    kind: HeaderRowKind,
-    s: &mut &'so [u8],
-) -> Result<HeaderRow<'so>, ParseError> {
+fn parse_header_row_value(kind: HeaderRowKind, s: &mut &[u8]) -> Result<HeaderRow, ParseError> {
     match kind {
         HeaderRowKind::Meta => meta::parse_meta(s).map(HeaderRow::Meta),
         HeaderRowKind::RefSeq => ref_seq::parse_ref_seq(s).map(HeaderRow::RefSeq),
@@ -167,16 +172,16 @@ fn parse_header_row_value<'so>(
     }
 }
 
-fn try_insert_once<T>(opt: &mut Option<T>, value: T) -> Result<(), ParseError> {
+pub(crate) fn try_insert_once<T>(opt: &mut Option<T>, value: T) -> Result<(), ParseError> {
     match opt.replace(value) {
         Some(_) => Err(ParseError::RepeatTag),
         None => Ok(()),
     }
 }
 
-fn parse_comment<'so>(s: &mut &'so [u8]) -> Result<&'so str, ParseError> {
+fn parse_comment(s: &mut &[u8]) -> Result<String, ParseError> {
     // Comments can contain \t ? Assume comment goes until the end of line
-    let comment = str::from_utf8(s).map_err(|_| ParseError::InvalidUTF8)?;
+    let comment = String::from_utf8(s.to_owned()).map_err(|_| ParseError::InvalidUTF8)?;
     *s = b"";
     Ok(comment)
 }
@@ -221,7 +226,7 @@ fn eat_kv_separator(s: &mut &[u8]) -> Result<(), ParseError> {
     }
 }
 
-fn parse_value<'so>(s: &mut &'so [u8]) -> Result<&'so [u8], ParseError> {
+fn parse_value<'a>(s: &mut &'a [u8]) -> Result<&'a [u8], ParseError> {
     const DELIM: u8 = b'\t';
 
     let i = s.iter().position(|&b| b == DELIM).unwrap_or(s.len());
@@ -234,7 +239,7 @@ fn parse_value<'so>(s: &mut &'so [u8]) -> Result<&'so [u8], ParseError> {
     }
 }
 
-fn parse_str<'so>(s: &mut &'so [u8]) -> Result<&'so str, ParseError> {
+fn parse_str<'a>(s: &mut &'a [u8]) -> Result<&'a str, ParseError> {
     let value = parse_value(s)?;
     str::from_utf8(value).map_err(|_| ParseError::InvalidUTF8)
 }

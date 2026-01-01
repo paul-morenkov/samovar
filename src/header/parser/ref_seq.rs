@@ -6,7 +6,7 @@ use crate::header::{
     },
 };
 
-pub(super) fn parse_ref_seq<'so>(s: &mut &'so [u8]) -> Result<ReferenceSeq<'so>, ParseError> {
+pub(super) fn parse_ref_seq(s: &mut &[u8]) -> Result<ReferenceSeq, ParseError> {
     let mut name = None;
     let mut len = None;
     let mut alt_locus = None;
@@ -24,16 +24,16 @@ pub(super) fn parse_ref_seq<'so>(s: &mut &'so [u8]) -> Result<ReferenceSeq<'so>,
         eat_kv_separator(s)?;
         // TODO: fill in meta fields
         match tag {
-            b"SN" => try_insert_once(&mut name, parse_str(s)?)?,
-            b"LN" => try_insert_once(&mut len, parse_len(s)?)?,
-            b"AH" => try_insert_once(&mut alt_locus, parse_str(s)?)?,
-            b"AN" => try_insert_once(&mut alt_names, parse_alt_names(s)?)?,
-            b"AS" => try_insert_once(&mut assembly_id, parse_str(s)?)?,
-            b"DS" => try_insert_once(&mut description, parse_str(s)?)?,
-            b"M5" => try_insert_once(&mut checksum, parse_str(s)?)?,
-            b"SP" => try_insert_once(&mut species, parse_str(s)?)?,
+            b"SN" => try_insert_once(&mut name, parse_str(s)?.into())?,
+            b"LN" => try_insert_once(&mut len, parse_len(s)?.into())?,
+            b"AH" => try_insert_once(&mut alt_locus, parse_str(s)?.into())?,
+            b"AN" => try_insert_once(&mut alt_names, parse_alt_names(s)?.into())?,
+            b"AS" => try_insert_once(&mut assembly_id, parse_str(s)?.into())?,
+            b"DS" => try_insert_once(&mut description, parse_str(s)?.into())?,
+            b"M5" => try_insert_once(&mut checksum, parse_str(s)?.into())?,
+            b"SP" => try_insert_once(&mut species, parse_str(s)?.into())?,
             b"TP" => try_insert_once(&mut topology, parse_topology(s)?)?,
-            b"UR" => try_insert_once(&mut uri, parse_str(s)?)?,
+            b"UR" => try_insert_once(&mut uri, parse_str(s)?.into())?,
 
             _ => return Err(ParseError::UnknownTag),
         };
@@ -58,9 +58,9 @@ fn parse_len(s: &mut &[u8]) -> Result<u64, ParseError> {
     value.parse().map_err(|_| ParseError::UnknownValue)
 }
 
-fn parse_alt_names<'so>(s: &mut &'so [u8]) -> Result<Vec<&'so str>, ParseError> {
+fn parse_alt_names(s: &mut &[u8]) -> Result<Vec<String>, ParseError> {
     let value = parse_str(s)?;
-    Ok(value.split(',').collect())
+    Ok(value.split(',').map(str::to_owned).collect())
 }
 
 fn parse_topology(s: &mut &[u8]) -> Result<Topology, ParseError> {

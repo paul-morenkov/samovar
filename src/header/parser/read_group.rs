@@ -6,7 +6,7 @@ use crate::header::{
     },
 };
 
-pub(super) fn parse_read_group<'so>(s: &mut &'so [u8]) -> Result<ReadGroup<'so>, ParseError> {
+pub(super) fn parse_read_group(s: &mut &[u8]) -> Result<ReadGroup, ParseError> {
     let mut id = None;
     let mut barcode = None;
     let mut center = None;
@@ -28,16 +28,16 @@ pub(super) fn parse_read_group<'so>(s: &mut &'so [u8]) -> Result<ReadGroup<'so>,
         eat_kv_separator(s)?;
         // TODO: fill in meta fields
         match tag {
-            b"ID" => try_insert_once(&mut id, parse_str(s)?)?,
-            b"BC" => try_insert_once(&mut barcode, parse_str(s)?)?,
-            b"CN" => try_insert_once(&mut center, parse_str(s)?)?,
-            b"DS" => try_insert_once(&mut description, parse_str(s)?)?,
-            b"DT" => try_insert_once(&mut date, parse_str(s)?)?,
-            b"FO" => try_insert_once(&mut flow_order, parse_str(s)?)?,
-            b"KS" => try_insert_once(&mut key_sequence, parse_str(s)?)?,
-            b"LB" => try_insert_once(&mut library, parse_str(s)?)?,
+            b"ID" => try_insert_once(&mut id, parse_str(s)?.into())?,
+            b"BC" => try_insert_once(&mut barcode, parse_str(s)?.into())?,
+            b"CN" => try_insert_once(&mut center, parse_str(s)?.into())?,
+            b"DS" => try_insert_once(&mut description, parse_str(s)?.into())?,
+            b"DT" => try_insert_once(&mut date, parse_str(s)?.into())?,
+            b"FO" => try_insert_once(&mut flow_order, parse_str(s)?.into())?,
+            b"KS" => try_insert_once(&mut key_sequence, parse_str(s)?.into())?,
+            b"LB" => try_insert_once(&mut library, parse_str(s)?.into())?,
             // TODO: unclear what format the PG field is in
-            b"PG" => try_insert_once(&mut programs, parse_str(s)?)?,
+            b"PG" => try_insert_once(&mut programs, parse_str(s)?.into())?,
             b"PI" => try_insert_once(
                 &mut insert_size,
                 parse_str(s)?
@@ -45,9 +45,9 @@ pub(super) fn parse_read_group<'so>(s: &mut &'so [u8]) -> Result<ReadGroup<'so>,
                     .map_err(|_| ParseError::UnknownValue)?,
             )?,
             b"PL" => try_insert_once(&mut platform, parse_plaform(s)?)?,
-            b"PM" => try_insert_once(&mut platform_model, parse_str(s)?)?,
-            b"PU" => try_insert_once(&mut platform_unit, parse_str(s)?)?,
-            b"SM" => try_insert_once(&mut sample, parse_str(s)?)?,
+            b"PM" => try_insert_once(&mut platform_model, parse_str(s)?.into())?,
+            b"PU" => try_insert_once(&mut platform_unit, parse_str(s)?.into())?,
+            b"SM" => try_insert_once(&mut sample, parse_str(s)?.into())?,
 
             _ => return Err(ParseError::UnknownTag),
         }
