@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::BufRead};
+use std::{collections::HashMap, str::FromStr};
 
 use crate::header::parser::ParseError;
 
@@ -14,11 +14,11 @@ pub(crate) struct Header {
     comments: Vec<String>,
 }
 
-impl TryFrom<String> for Header {
-    type Error = parser::ParseError;
+impl FromStr for Header {
+    type Err = ParseError;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        parser::parse(&value)
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        parser::parse(value)
     }
 }
 
@@ -151,10 +151,4 @@ struct Program {
     description: Option<String>,
     // VN
     version: Option<String>,
-}
-
-pub fn read_header(reader: &mut impl BufRead) -> Result<Header, ParseError> {
-    let mut buf = String::new();
-    while let Ok(line) = reader.read_line(&mut buf) {}
-    todo!()
 }

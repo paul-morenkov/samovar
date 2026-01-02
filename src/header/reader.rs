@@ -5,7 +5,7 @@ use crate::header::{
     parser::{HeaderRow, ParseError, parse_header_row, try_insert_once},
 };
 
-pub(crate) fn read_header(reader: &mut impl BufRead) -> Result<Header, ParseError> {
+pub fn read_header(reader: &mut impl BufRead) -> Result<Header, ParseError> {
     let mut meta = None;
     let mut reference_seqs = HashMap::new();
     let mut read_groups = HashMap::new();
@@ -21,7 +21,6 @@ pub(crate) fn read_header(reader: &mut impl BufRead) -> Result<Header, ParseErro
     {
         // Remove the newline to match functionality of String::lines()
         let header_row = parse_header_row(&buf[..buf.len() - 1])?;
-        dbg!(&header_row);
         match header_row {
             HeaderRow::Meta(m) => try_insert_once(&mut meta, m)?,
             HeaderRow::RefSeq(ref_seq) => {

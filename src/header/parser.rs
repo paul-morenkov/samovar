@@ -4,28 +4,8 @@ mod read_group;
 mod ref_seq;
 
 use crate::header::{Header, HeaderMeta, Program, ReadGroup, ReferenceSeq};
-// use logos::Logos;
 use std::{collections::HashMap, str::FromStr};
 
-// #[derive(Logos, Debug)]
-// #[logos(skip r"\n+")]
-// pub(crate) enum HeaderToken {
-//     #[token("@", priority = 10)]
-//     At,
-//     #[regex(r"HD|SQ|RG|PG", |lex| RecordCode::from_str(lex.slice()), priority = 10)]
-//     RecordCode(RecordCode),
-//     #[token(":", priority = 10)]
-//     Colon,
-//     #[token(r"\t")]
-//     Tab,
-//     #[regex(r"[A-Za-z][A-Za-z0-9]:[^\t\n]+", |lex| lex.slice().split_once(':').unwrap())]
-//     Field((String /* key */, String /* value */)),
-//     #[regex(r"CO\t.*", |lex| lex.slice().split_at(3).1, allow_greedy = true)]
-//     Comment(String),
-//     #[regex(r"[0-9]+\.[0-9]+", |lex| lex.slice())]
-//     Version(String),
-// }
-//
 #[derive(Debug)]
 enum RecordCode {
     // HD
@@ -52,6 +32,23 @@ impl FromStr for RecordCode {
     }
 }
 
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct HeaderParseError {
+    line: usize,
+    kind: HeaderParseErrorKind,
+}
+
+
+// TODO: Figure out how to improve error organization
+#[derive(Debug)]
+pub enum HeaderParseErrorKind {
+    // Meta(MetaParseError),
+    // ReadGroup(ReadGroupParseError),
+    // RefSeq(RefSeqParseError),
+    // Program(ProgramParseError),
+}
+
 #[derive(Debug, Clone)]
 pub enum ParseError {
     MissingPrefix,
@@ -70,10 +67,11 @@ pub enum ParseError {
     MissingRadGroupId,
     MissingProgramId,
     IOError,
+    MissingAlignmentField,
 }
 
 #[derive(Debug)]
-pub(crate) enum HeaderRow {
+pub(super) enum HeaderRow {
     Meta(HeaderMeta),
     RefSeq(ReferenceSeq),
     ReadGroup(ReadGroup),
@@ -138,7 +136,7 @@ pub(crate) fn parse(s: &str) -> Result<Header, ParseError> {
     })
 }
 
-pub(crate) fn parse_header_row(mut s: &[u8]) -> Result<HeaderRow, ParseError> {
+pub(super) fn parse_header_row(mut s: &[u8]) -> Result<HeaderRow, ParseError> {
     eat_prefix(&mut s)?;
     let row_kind = parse_header_row_kind(&mut s)?;
     parse_header_row_value(row_kind, &mut s)

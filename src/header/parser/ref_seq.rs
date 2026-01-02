@@ -25,9 +25,9 @@ pub(super) fn parse_ref_seq(s: &mut &[u8]) -> Result<ReferenceSeq, ParseError> {
         // TODO: fill in meta fields
         match tag {
             b"SN" => try_insert_once(&mut name, parse_str(s)?.into())?,
-            b"LN" => try_insert_once(&mut len, parse_len(s)?.into())?,
+            b"LN" => try_insert_once(&mut len, parse_len(s)?)?,
             b"AH" => try_insert_once(&mut alt_locus, parse_str(s)?.into())?,
-            b"AN" => try_insert_once(&mut alt_names, parse_alt_names(s)?.into())?,
+            b"AN" => try_insert_once(&mut alt_names, parse_alt_names(s)?)?,
             b"AS" => try_insert_once(&mut assembly_id, parse_str(s)?.into())?,
             b"DS" => try_insert_once(&mut description, parse_str(s)?.into())?,
             b"M5" => try_insert_once(&mut checksum, parse_str(s)?.into())?,

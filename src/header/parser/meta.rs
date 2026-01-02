@@ -1,5 +1,3 @@
-use std::sync::LazyLock;
-
 use crate::header::{
     AlignmentGrouping, HeaderMeta, SortOrder, Version,
     parser::{
@@ -7,9 +5,23 @@ use crate::header::{
     },
 };
 
-use regex::bytes::Regex;
-
-static RE_VERSION: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^([0-9]+).([0-9]+)").unwrap());
+#[derive(Debug)]
+pub enum MetaParseError {
+    #[non_exhaustive]
+    MissingVersion,
+    #[non_exhaustive]
+    BadVersion,
+    #[non_exhaustive]
+    MissingFieldDelimiter,
+    #[non_exhaustive]
+    MissingKeyValueSeparator,
+    #[non_exhaustive]
+    BadSortOrder,
+    #[non_exhaustive]
+    BadGrouping,
+    #[non_exhaustive]
+    BadSubSortOrder,
+}
 
 pub(crate) fn parse_meta(s: &mut &[u8]) -> Result<HeaderMeta, ParseError> {
     let mut version = None;
@@ -39,12 +51,18 @@ pub(crate) fn parse_meta(s: &mut &[u8]) -> Result<HeaderMeta, ParseError> {
 }
 
 fn parse_version(s: &mut &[u8]) -> Result<Version, ParseError> {
-    if let Some(caps) = RE_VERSION.captures(s) {
-        let m = caps.get_match();
-        *s = &s[m.end()..];
-        let major = str::from_utf8(&caps[1]).unwrap().parse().unwrap();
-        let minor = str::from_utf8(&caps[2]).unwrap().parse().unwrap();
-        // SAFETY: re match means this will be valid UTF8
+    let value = parse_value(s)?;
+
+    if let Some(i) = value.iter().position(|&c| c == b'.') {
+        let (major, minor) = value.split_at(i);
+        let major = str::from_utf8(major)
+            .map_err(|_| ParseError::InvalidUTF8)?
+            .parse()
+            .map_err(|_| ParseError::BadVersion)?;
+        let minor = str::from_utf8(&minor[1..])
+            .map_err(|_| ParseError::InvalidUTF8)?
+            .parse()
+            .map_err(|_| ParseError::BadVersion)?;
         Ok(Version { major, minor })
     } else {
         Err(ParseError::BadVersion)
